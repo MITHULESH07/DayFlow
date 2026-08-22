@@ -121,6 +121,7 @@ const getMyLeaves = async (req, res, next) => {
 
 // GET /api/leaves (ADMIN only)
 const getAllLeaves = async (req, res, next) => {
+  const companyId = req.user.companyId;
   try {
     const [rows] = await db.query(
       `SELECT 
@@ -139,7 +140,9 @@ const getAllLeaves = async (req, res, next) => {
        JOIN employees e ON l.employee_id = e.id
        JOIN users u ON e.user_id = u.id
        LEFT JOIN departments d ON e.department_id = d.id
-       ORDER BY l.created_at DESC`
+       WHERE u.company_id = ?
+       ORDER BY l.created_at DESC`,
+      [companyId]
     );
 
     const leaveRequests = rows.map(row => ({
@@ -167,10 +170,17 @@ const getAllLeaves = async (req, res, next) => {
 const approveLeave = async (req, res, next) => {
   const { id } = req.params;
   const { admin_comment } = req.body;
+  const companyId = req.user.companyId;
 
   try {
-    // Check if request exists
-    const [rows] = await db.query('SELECT status FROM leave_requests WHERE id = ?', [id]);
+    // Check if request exists and belongs to the same company
+    const [rows] = await db.query(
+      `SELECT l.status FROM leave_requests l 
+       JOIN employees e ON l.employee_id = e.id 
+       JOIN users u ON e.user_id = u.id 
+       WHERE l.id = ? AND u.company_id = ?`,
+      [id, companyId]
+    );
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Leave request not found' });
     }
@@ -201,10 +211,17 @@ const approveLeave = async (req, res, next) => {
 const rejectLeave = async (req, res, next) => {
   const { id } = req.params;
   const { admin_comment } = req.body;
+  const companyId = req.user.companyId;
 
   try {
-    // Check if request exists
-    const [rows] = await db.query('SELECT status FROM leave_requests WHERE id = ?', [id]);
+    // Check if request exists and belongs to the same company
+    const [rows] = await db.query(
+      `SELECT l.status FROM leave_requests l 
+       JOIN employees e ON l.employee_id = e.id 
+       JOIN users u ON e.user_id = u.id 
+       WHERE l.id = ? AND u.company_id = ?`,
+      [id, companyId]
+    );
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Leave request not found' });
     }
@@ -230,6 +247,7 @@ const rejectLeave = async (req, res, next) => {
     next(err);
   }
 };
+
 
 module.exports = {
   requestLeave,

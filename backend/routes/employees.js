@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const employeeController = require('../controllers/employeeController');
@@ -22,7 +22,7 @@ const handleProfileUpload = (req, res, next) => {
 };
 
 // POST /api/employees (ADMIN only)
-router.post('/', verifyToken, requireRole('ADMIN'), employeeController.createEmployee);
+router.post('/', verifyToken, requireRole('hr'), employeeController.createEmployee);
 
 // GET /api/employees/me (Authenticated)
 router.get('/me', verifyToken, employeeController.getMe);
@@ -34,12 +34,18 @@ router.put('/me', verifyToken, employeeController.updateMe);
 router.put('/me/profile-picture', verifyToken, handleProfileUpload, employeeController.updateProfilePicture);
 
 // GET /api/employees (ADMIN only)
-router.get('/', verifyToken, requireRole('ADMIN'), employeeController.getAll);
+router.get('/', verifyToken, requireRole('hr'), employeeController.getAll);
+
+// PUT /api/employees/:id/profile-picture (ADMIN only)
+router.put('/:id/profile-picture', verifyToken, requireRole('hr'), handleProfileUpload, employeeController.updateProfilePictureById);
 
 // GET /api/employees/:id (ADMIN only)
-router.get('/:id', verifyToken, requireRole('ADMIN'), employeeController.getById);
+router.get('/:id', verifyToken, requireRole('hr'), employeeController.getById);
 
 // PUT /api/employees/:id (ADMIN only)
-router.put('/:id', verifyToken, requireRole('ADMIN'), employeeController.updateById);
+router.put('/:id', verifyToken, requireRole('hr'), employeeController.updateById);
+
 
 module.exports = router;
+
+

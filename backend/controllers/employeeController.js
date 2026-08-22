@@ -1,7 +1,13 @@
-const db = require('../config/db');
+﻿const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
 const path = require('path');
+const { sendEmployeePasswordEmail } = require('../services/emailService');
+
+const resolveEmployeeIdForUser = async (userId) => {
+  const [rows] = await db.query('SELECT id FROM employees WHERE user_id = ?', [userId]);
+  return rows[0]?.id || null;
+};
 
 // POST /api/employees (ADMIN only)
 const createEmployee = async (req, res, next) => {
@@ -12,6 +18,7 @@ const createEmployee = async (req, res, next) => {
     phone,
     address,
     department_id,
+    department,
     job_title,
     joining_date
   } = req.body;
@@ -28,6 +35,13 @@ const createEmployee = async (req, res, next) => {
     const [existingUsers] = await connection.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existingUsers.length > 0) {
       return res.status(400).json({ message: 'Email already exists' });
+    }
+
+    let resolvedDepartmentId = department_id || null;
+    if (!resolvedDepartmentId && department && department.trim()) {
+      await connection.query('INSERT IGNORE INTO departments (name) VALUES (?)', [department.trim()]);
+      const [deptRows] = await connection.query('SELECT id FROM departments WHERE name = ?', [department.trim()]);
+      resolvedDepartmentId = deptRows.length ? deptRows[0].id : null;
     }
 
     // 2. Fetch or insert yearly serial (concurrency safe using FOR UPDATE)
@@ -72,10 +86,11 @@ const createEmployee = async (req, res, next) => {
     }
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-    // 5. Insert user record (role is always EMPLOYEE when created here)
+    // 5. Insert user record (role is always employee when created here)
+    const companyId = req.user.companyId;
     const [userResult] = await connection.query(
-      'INSERT INTO users (employee_id, email, password, role) VALUES (?, ?, ?, "EMPLOYEE")',
-      [employeeIdStr, email, hashedPassword]
+      'INSERT INTO users (employee_id, email, password, role, company_id) VALUES (?, ?, ?, "employee", ?)',
+      [employeeIdStr, email, hashedPassword, companyId]
     );
 
     const userId = userResult.insertId;
@@ -90,13 +105,29 @@ const createEmployee = async (req, res, next) => {
         last_name || null,
         phone || null,
         address || null,
-        department_id || null,
+        resolvedDepartmentId,
         job_title || null,
         joining_date
       ]
     );
 
     await connection.commit();
+
+    let emailDelivery = { sent: false };
+    try {
+      const emailResult = await sendEmployeePasswordEmail({
+        to: email,
+        name: `${first_name} ${last_name || ''}`.trim(),
+        employeeId: employeeIdStr,
+        password: tempPassword,
+      });
+      emailDelivery = emailResult?.skipped
+        ? { sent: false, skipped: true, reason: emailResult.reason }
+        : { sent: true, id: emailResult?.id };
+    } catch (emailErr) {
+      console.error('Employee invitation email failed:', emailErr.message);
+      emailDelivery = { sent: false, error: emailErr.message };
+    }
 
     res.status(201).json({
       message: 'Employee created successfully',
@@ -108,9 +139,15 @@ const createEmployee = async (req, res, next) => {
         first_name,
         last_name,
         joining_date,
-        role: 'EMPLOYEE'
-      }
+        role: 'employee',
+        mustChangePassword: true,
+        department_id: resolvedDepartmentId,
+        department_name: department || null,
+        job_title
+      },
+      emailDelivery
     });
+
 
   } catch (err) {
     await connection.rollback();
@@ -122,13 +159,12 @@ const createEmployee = async (req, res, next) => {
 
 // GET /api/employees/me (Authenticated)
 const getMe = async (req, res, next) => {
-  const employeeIdPk = req.user.employeeIdPk;
-
-  if (!employeeIdPk) {
-    return res.status(400).json({ message: 'No associated employee profile found' });
-  }
-
   try {
+    const employeeIdPk = req.user.employeeIdPk || await resolveEmployeeIdForUser(req.user.id);
+
+    if (!employeeIdPk) {
+      return res.status(400).json({ message: 'No associated employee profile found' });
+    }
     const [rows] = await db.query(
       `SELECT e.*, u.employee_id, u.email, u.role, d.name AS department_name
        FROM employees e
@@ -142,7 +178,30 @@ const getMe = async (req, res, next) => {
       return res.status(404).json({ message: 'Employee profile not found' });
     }
 
-    res.json(rows[0]);
+    const employee = rows[0];
+    
+    // Parse JSON fields
+    if (employee.skills) {
+      try {
+        employee.skills = JSON.parse(employee.skills);
+      } catch (e) {
+        employee.skills = [];
+      }
+    } else {
+      employee.skills = [];
+    }
+
+    if (employee.certifications) {
+      try {
+        employee.certifications = JSON.parse(employee.certifications);
+      } catch (e) {
+        employee.certifications = [];
+      }
+    } else {
+      employee.certifications = [];
+    }
+
+    res.json(employee);
   } catch (err) {
     next(err);
   }
@@ -150,8 +209,30 @@ const getMe = async (req, res, next) => {
 
 // PUT /api/employees/me (Authenticated)
 const updateMe = async (req, res, next) => {
-  const employeeIdPk = req.user.employeeIdPk;
-  const { first_name, last_name, phone, address } = req.body;
+  const employeeIdPk = req.user.employeeIdPk || await resolveEmployeeIdForUser(req.user.id);
+  const {
+    first_name,
+    last_name,
+    phone,
+    address,
+    manager_name,
+    location,
+    about_me,
+    job_passion,
+    interests,
+    skills,
+    certifications,
+    date_of_birth,
+    nationality,
+    gender,
+    personal_email,
+    marital_status,
+    bank_name,
+    bank_account_no,
+    bank_ifsc,
+    pan_no,
+    uan_no
+  } = req.body;
 
   if (!employeeIdPk) {
     return res.status(400).json({ message: 'No associated employee profile found' });
@@ -162,11 +243,41 @@ const updateMe = async (req, res, next) => {
   }
 
   try {
+    const skillsStr = Array.isArray(skills) ? JSON.stringify(skills) : (skills || null);
+    const certsStr = Array.isArray(certifications) ? JSON.stringify(certifications) : (certifications || null);
+
     await db.query(
       `UPDATE employees 
-       SET first_name = ?, last_name = ?, phone = ?, address = ?
+       SET first_name = ?, last_name = ?, phone = ?, address = ?,
+           manager_name = ?, location = ?, about_me = ?, job_passion = ?, interests = ?,
+           skills = ?, certifications = ?, date_of_birth = ?, nationality = ?, gender = ?,
+           personal_email = ?, marital_status = ?, bank_name = ?, bank_account_no = ?,
+           bank_ifsc = ?, pan_no = ?, uan_no = ?
        WHERE id = ?`,
-      [first_name, last_name || null, phone || null, address || null, employeeIdPk]
+      [
+        first_name,
+        last_name || null,
+        phone || null,
+        address || null,
+        manager_name || null,
+        location || null,
+        about_me || null,
+        job_passion || null,
+        interests || null,
+        skillsStr,
+        certsStr,
+        date_of_birth || null,
+        nationality || null,
+        gender || null,
+        personal_email || null,
+        marital_status || null,
+        bank_name || null,
+        bank_account_no || null,
+        bank_ifsc || null,
+        pan_no || null,
+        uan_no || null,
+        employeeIdPk
+      ]
     );
 
     res.json({ message: 'Profile updated successfully' });
@@ -175,9 +286,10 @@ const updateMe = async (req, res, next) => {
   }
 };
 
+
 // PUT /api/employees/me/profile-picture (Authenticated)
 const updateProfilePicture = async (req, res, next) => {
-  const employeeIdPk = req.user.employeeIdPk;
+  const employeeIdPk = req.user.employeeIdPk || await resolveEmployeeIdForUser(req.user.id);
 
   if (!employeeIdPk) {
     // Delete file if uploaded but user profile is missing
@@ -200,7 +312,7 @@ const updateProfilePicture = async (req, res, next) => {
     }
 
     const oldPath = rows[0].profile_picture;
-    const newRelativePath = `/uploads/profile/${req.file.filename}`;
+    const newRelativePath = `/uploads/${req.file.filename}`;
 
     // 2. Save new relative path to MySQL database
     await db.query('UPDATE employees SET profile_picture = ? WHERE id = ?', [newRelativePath, employeeIdPk]);
@@ -235,16 +347,104 @@ const updateProfilePicture = async (req, res, next) => {
   }
 };
 
-// GET /api/employees (ADMIN only)
-const getAll = async (req, res, next) => {
+
+// PUT /api/employees/:id/profile-picture (ADMIN only)
+const updateProfilePictureById = async (req, res, next) => {
+  const { id } = req.params;
+  const companyId = req.user.companyId;
+
+  if (!req.file) {
+    return res.status(400).json({ message: 'Please upload a profile picture' });
+  }
+
   try {
     const [rows] = await db.query(
-      `SELECT e.*, u.employee_id, u.email, u.role, d.name AS department_name
+      `SELECT e.profile_picture
        FROM employees e
        JOIN users u ON e.user_id = u.id
-       LEFT JOIN departments d ON e.department_id = d.id`
+       WHERE e.id = ? AND u.company_id = ?`,
+      [id, companyId]
     );
-    res.json(rows);
+
+    if (rows.length === 0) {
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    const oldPath = rows[0].profile_picture;
+    const newRelativePath = `/uploads/${req.file.filename}`;
+
+    await db.query('UPDATE employees SET profile_picture = ? WHERE id = ?', [newRelativePath, id]);
+
+    if (oldPath) {
+      const relativeClean = oldPath.replace(/^\//, '');
+      const absoluteOldPath = path.join(__dirname, '..', relativeClean);
+      if (fs.existsSync(absoluteOldPath)) {
+        fs.unlink(absoluteOldPath, (err) => {
+          if (err) console.error('Failed to delete old profile picture:', err.message);
+        });
+      }
+    }
+
+    res.json({
+      message: 'Employee profile picture updated successfully',
+      profilePicture: newRelativePath
+    });
+  } catch (err) {
+    if (req.file) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkErr) {
+        console.error(unlinkErr);
+      }
+    }
+    next(err);
+  }
+};
+// GET /api/employees (ADMIN only)
+const getAll = async (req, res, next) => {
+  const companyId = req.user.companyId;
+  try {
+    const [rows] = await db.query(
+      `SELECT e.*, u.employee_id, u.email, u.role, d.name AS department_name,
+        CASE
+          WHEN lr.id IS NOT NULL THEN 'leave'
+          WHEN a.id IS NOT NULL AND a.status IN ('PRESENT', 'HALF_DAY') THEN 'present'
+          ELSE 'absent'
+        END AS today_status
+       FROM employees e
+       JOIN users u ON e.user_id = u.id
+       LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN attendance a ON a.employee_id = e.id AND a.attendance_date = CURDATE()
+       LEFT JOIN leave_requests lr ON lr.employee_id = e.id AND lr.status = 'APPROVED' AND CURDATE() BETWEEN lr.start_date AND lr.end_date
+       WHERE u.company_id = ?`,
+      [companyId]
+    );
+
+    const employees = rows.map(emp => {
+      if (emp.skills) {
+        try {
+          emp.skills = JSON.parse(emp.skills);
+        } catch (e) {
+          emp.skills = [];
+        }
+      } else {
+        emp.skills = [];
+      }
+
+      if (emp.certifications) {
+        try {
+          emp.certifications = JSON.parse(emp.certifications);
+        } catch (e) {
+          emp.certifications = [];
+        }
+      } else {
+        emp.certifications = [];
+      }
+      return emp;
+    });
+
+    res.json(employees);
   } catch (err) {
     next(err);
   }
@@ -253,6 +453,7 @@ const getAll = async (req, res, next) => {
 // GET /api/employees/:id (ADMIN only)
 const getById = async (req, res, next) => {
   const { id } = req.params;
+  const companyId = req.user.companyId;
 
   try {
     const [rows] = await db.query(
@@ -260,15 +461,37 @@ const getById = async (req, res, next) => {
        FROM employees e
        JOIN users u ON e.user_id = u.id
        LEFT JOIN departments d ON e.department_id = d.id
-       WHERE e.id = ?`,
-      [id]
+       WHERE e.id = ? AND u.company_id = ?`,
+      [id, companyId]
     );
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    res.json(rows[0]);
+    const employee = rows[0];
+
+    if (employee.skills) {
+      try {
+        employee.skills = JSON.parse(employee.skills);
+      } catch (e) {
+        employee.skills = [];
+      }
+    } else {
+      employee.skills = [];
+    }
+
+    if (employee.certifications) {
+      try {
+        employee.certifications = JSON.parse(employee.certifications);
+      } catch (e) {
+        employee.certifications = [];
+      }
+    } else {
+      employee.certifications = [];
+    }
+
+    res.json(employee);
   } catch (err) {
     next(err);
   }
@@ -277,14 +500,33 @@ const getById = async (req, res, next) => {
 // PUT /api/employees/:id (ADMIN only)
 const updateById = async (req, res, next) => {
   const { id } = req.params;
+  const companyId = req.user.companyId;
   const {
     first_name,
     last_name,
     phone,
     address,
     department_id,
+    department,
     job_title,
-    joining_date
+    joining_date,
+    manager_name,
+    location,
+    about_me,
+    job_passion,
+    interests,
+    skills,
+    certifications,
+    date_of_birth,
+    nationality,
+    gender,
+    personal_email,
+    marital_status,
+    bank_name,
+    bank_account_no,
+    bank_ifsc,
+    pan_no,
+    uan_no
   } = req.body;
 
   if (!first_name || !joining_date) {
@@ -292,23 +534,57 @@ const updateById = async (req, res, next) => {
   }
 
   try {
-    const [rows] = await db.query('SELECT id FROM employees WHERE id = ?', [id]);
+    const [rows] = await db.query(
+      'SELECT e.id FROM employees e JOIN users u ON e.user_id = u.id WHERE e.id = ? AND u.company_id = ?',
+      [id, companyId]
+    );
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
+    let resolvedDepartmentId = department_id || null;
+    if (!resolvedDepartmentId && department && department.trim()) {
+      await db.query('INSERT IGNORE INTO departments (name) VALUES (?)', [department.trim()]);
+      const [deptRows] = await db.query('SELECT id FROM departments WHERE name = ?', [department.trim()]);
+      resolvedDepartmentId = deptRows.length ? deptRows[0].id : null;
+    }
+
+    const skillsStr = Array.isArray(skills) ? JSON.stringify(skills) : (skills || null);
+    const certsStr = Array.isArray(certifications) ? JSON.stringify(certifications) : (certifications || null);
+
     await db.query(
       `UPDATE employees 
-       SET first_name = ?, last_name = ?, phone = ?, address = ?, department_id = ?, job_title = ?, joining_date = ?
+       SET first_name = ?, last_name = ?, phone = ?, address = ?, department_id = ?, job_title = ?, joining_date = ?,
+           manager_name = ?, location = ?, about_me = ?, job_passion = ?, interests = ?,
+           skills = ?, certifications = ?, date_of_birth = ?, nationality = ?, gender = ?,
+           personal_email = ?, marital_status = ?, bank_name = ?, bank_account_no = ?,
+           bank_ifsc = ?, pan_no = ?, uan_no = ?
        WHERE id = ?`,
       [
         first_name,
         last_name || null,
         phone || null,
         address || null,
-        department_id || null,
+        resolvedDepartmentId,
         job_title || null,
         joining_date,
+        manager_name || null,
+        location || null,
+        about_me || null,
+        job_passion || null,
+        interests || null,
+        skillsStr,
+        certsStr,
+        date_of_birth || null,
+        nationality || null,
+        gender || null,
+        personal_email || null,
+        marital_status || null,
+        bank_name || null,
+        bank_account_no || null,
+        bank_ifsc || null,
+        pan_no || null,
+        uan_no || null,
         id
       ]
     );
@@ -324,7 +600,18 @@ module.exports = {
   getMe,
   updateMe,
   updateProfilePicture,
+  updateProfilePictureById,
   getAll,
   getById,
   updateById
 };
+
+
+
+
+
+
+
+
+
+

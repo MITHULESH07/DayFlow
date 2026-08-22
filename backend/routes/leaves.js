@@ -10,12 +10,13 @@ router.post('/', verifyToken, leaveController.requestLeave);
 router.get('/me', verifyToken, leaveController.getMyLeaves);
 
 // GET /api/leaves (Get all leave requests - ADMIN only)
-router.get('/', verifyToken, requireRole('ADMIN'), leaveController.getAllLeaves);
+router.get('/', verifyToken, requireRole('hr'), leaveController.getAllLeaves);
 
 // PUT /api/leaves/:id/approve (Approve leave request - ADMIN only)
-router.put('/:id/approve', verifyToken, requireRole('ADMIN'), leaveController.approveLeave);
+router.put('/:id/approve', verifyToken, requireRole('hr'), leaveController.approveLeave);
 
 // PUT /api/leaves/:id/reject (Reject leave request - ADMIN only)
-router.put('/:id/reject', verifyToken, requireRole('ADMIN'), leaveController.rejectLeave);
+router.put('/:id/reject', verifyToken, requireRole('hr'), leaveController.rejectLeave);
+
 
 module.exports = router;

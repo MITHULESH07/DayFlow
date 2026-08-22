@@ -204,6 +204,7 @@ const getMyAttendance = async (req, res, next) => {
 
 // GET /api/attendance/all (ADMIN only)
 const getAllAttendance = async (req, res, next) => {
+  const companyId = req.user.companyId;
   try {
     const [rows] = await db.query(
       `SELECT 
@@ -218,8 +219,11 @@ const getAllAttendance = async (req, res, next) => {
        JOIN employees e ON a.employee_id = e.id
        JOIN users u ON e.user_id = u.id
        LEFT JOIN departments d ON e.department_id = d.id
-       ORDER BY a.attendance_date DESC, a.check_in DESC`
+       WHERE u.company_id = ?
+       ORDER BY a.attendance_date DESC, a.check_in DESC`,
+      [companyId]
     );
+
 
     const attendance = rows.map(row => {
       const dateString = row.attendance_date instanceof Date

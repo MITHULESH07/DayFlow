@@ -1,8 +1,13 @@
 const db = require('../config/db');
 
+const resolveEmployeeIdForUser = async (userId) => {
+  const [rows] = await db.query('SELECT id FROM employees WHERE user_id = ?', [userId]);
+  return rows[0]?.id || null;
+};
+
 // GET /api/payroll/me (Employee gets own payroll)
 const getMe = async (req, res, next) => {
-  const employeeIdPk = req.user.employeeIdPk;
+  const employeeIdPk = req.user.employeeIdPk || await resolveEmployeeIdForUser(req.user.id);
 
   if (!employeeIdPk) {
     return res.status(400).json({ message: 'No associated employee profile found' });
@@ -15,7 +20,27 @@ const getMe = async (req, res, next) => {
     );
 
     if (rows.length === 0) {
-      // Return zeroed payroll response if no payroll details exist yet
+      if (req.user.role === 'hr') {
+        const basic = 35000;
+        const allowances = 35000;
+        const deductions = 4400;
+        const net = basic + allowances - deductions;
+        await db.query(
+          'INSERT INTO payroll (employee_id, basic_salary, allowances, deductions, net_salary) VALUES (?, ?, ?, ?, ?)',
+          [employeeIdPk, basic, allowances, deductions, net]
+        );
+        return res.json({
+          payroll: {
+            employee_id: employeeIdPk,
+            basic_salary: basic.toFixed(2),
+            allowances: allowances.toFixed(2),
+            deductions: deductions.toFixed(2),
+            net_salary: net.toFixed(2),
+            updated_at: null
+          }
+        });
+      }
+
       return res.json({
         payroll: {
           employee_id: employeeIdPk,
@@ -48,6 +73,7 @@ const getMe = async (req, res, next) => {
 
 // GET /api/payroll (ADMIN only - view all employee payrolls)
 const getAll = async (req, res, next) => {
+  const companyId = req.user.companyId;
   try {
     const [rows] = await db.query(`
       SELECT 
@@ -64,10 +90,12 @@ const getAll = async (req, res, next) => {
       JOIN users u ON e.user_id = u.id
       LEFT JOIN departments d ON e.department_id = d.id
       LEFT JOIN payroll p ON e.id = p.employee_id
+      WHERE u.company_id = ?
       ORDER BY e.id ASC
-    `);
+    `, [companyId]);
 
     const payrollList = rows.map(row => ({
+      employeeIdPk: row.employeeIdPk,
       employeeId: row.employeeIdStr,
       employeeName: row.employeeName.trim(),
       department: row.departmentName || 'N/A',
@@ -89,6 +117,7 @@ const getAll = async (req, res, next) => {
 const updatePayroll = async (req, res, next) => {
   const { employeeId } = req.params; // Refers to employees.id (FK primary key)
   const { basic_salary, allowances, deductions } = req.body;
+  const companyId = req.user.companyId;
 
   // Validate parameters presence
   if (basic_salary === undefined || allowances === undefined || deductions === undefined) {
@@ -110,11 +139,18 @@ const updatePayroll = async (req, res, next) => {
   }
 
   try {
-    // 1. Verify that employee exists
-    const [empRows] = await db.query('SELECT id FROM employees WHERE id = ?', [employeeId]);
+    // 1. Verify that employee exists and belongs to the same company
+    const [empRows] = await db.query(
+      'SELECT e.id, u.id AS userId FROM employees e JOIN users u ON e.user_id = u.id WHERE e.id = ? AND u.company_id = ?',
+      [employeeId, companyId]
+    );
     if (empRows.length === 0) {
       return res.status(404).json({ message: 'Employee not found' });
     }
+    if (Number(empRows[0].userId) === Number(req.user.id)) {
+      return res.status(403).json({ message: 'HR cannot edit their own salary' });
+    }
+
 
     // 2. Compute net_salary
     const net = basic + allow - deduct;

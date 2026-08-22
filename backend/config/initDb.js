@@ -15,10 +15,23 @@ async function initDb() {
     await connection.query('DROP TABLE IF EXISTS attendance');
     await connection.query('DROP TABLE IF EXISTS employees');
     await connection.query('DROP TABLE IF EXISTS users');
+    await connection.query('DROP TABLE IF EXISTS companies');
     await connection.query('DROP TABLE IF EXISTS employee_year_sequences');
     await connection.query('DROP TABLE IF EXISTS departments');
 
+    // 1.1. Create companies table
+    console.log('Creating companies table...');
+    await connection.query(`
+      CREATE TABLE companies (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(255) NOT NULL,
+        logo_path TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     // 2. Create departments table
+
     console.log('Creating departments table...');
     await connection.query(`
       CREATE TABLE departments (
@@ -41,13 +54,16 @@ async function initDb() {
     await connection.query(`
       CREATE TABLE users (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        employee_id VARCHAR(50) NOT NULL UNIQUE,
+        employee_id VARCHAR(50) NULL UNIQUE,
         email VARCHAR(255) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
-        role ENUM('ADMIN', 'EMPLOYEE') NOT NULL DEFAULT 'EMPLOYEE',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        role ENUM('hr', 'employee') NOT NULL DEFAULT 'employee',
+        company_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+
 
     // 5. Create employees table
     console.log('Creating employees table...');
@@ -64,10 +80,28 @@ async function initDb() {
         profile_picture TEXT,
         joining_date DATE NOT NULL,
         must_change_password TINYINT(1) DEFAULT 1,
+        manager_name VARCHAR(255) NULL,
+        location VARCHAR(255) NULL,
+        about_me TEXT NULL,
+        job_passion TEXT NULL,
+        interests TEXT NULL,
+        skills TEXT NULL,
+        certifications TEXT NULL,
+        date_of_birth DATE NULL,
+        nationality VARCHAR(100) NULL,
+        gender VARCHAR(50) NULL,
+        personal_email VARCHAR(255) NULL,
+        marital_status VARCHAR(50) NULL,
+        bank_name VARCHAR(255) NULL,
+        bank_account_no VARCHAR(100) NULL,
+        bank_ifsc VARCHAR(50) NULL,
+        pan_no VARCHAR(50) NULL,
+        uan_no VARCHAR(50) NULL,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+
 
     // 5.1. Create attendance table
     console.log('Creating attendance table...');
@@ -137,10 +171,17 @@ async function initDb() {
 
     await connection.beginTransaction();
 
+    // Seed default company
+    console.log('Seeding default company...');
+    const [companyResult] = await connection.query(`
+      INSERT INTO companies (name) VALUES ('Dayflow Workspace')
+    `);
+    const defaultCompanyId = companyResult.insertId;
+
     const [userResult] = await connection.query(`
-      INSERT INTO users (employee_id, email, password, role) 
-      VALUES (?, ?, ?, 'ADMIN')
-    `, [adminLoginId, 'admin@dayflow.com', hashedPassword]);
+      INSERT INTO users (employee_id, email, password, role, company_id) 
+      VALUES (NULL, ?, ?, 'hr', ?)
+    `, ['harini@dayflow.in', hashedPassword, defaultCompanyId]);
 
     const adminUserId = userResult.insertId;
 
@@ -148,10 +189,28 @@ async function initDb() {
     const [deptRows] = await connection.query("SELECT id FROM departments WHERE name = 'Human Resources'");
     const deptId = deptRows.length > 0 ? deptRows[0].id : null;
 
-    await connection.query(`
-      INSERT INTO employees (user_id, first_name, last_name, department_id, job_title, joining_date, must_change_password)
-      VALUES (?, 'System', 'Admin', ?, 'HR Administrator', CURDATE(), 0)
+    const [adminEmployeeResult] = await connection.query(`
+      INSERT INTO employees (
+        user_id, first_name, last_name, phone, address, department_id, job_title, joining_date, must_change_password,
+        manager_name, location, about_me, job_passion, interests, skills, certifications,
+        date_of_birth, nationality, gender, personal_email, marital_status,
+        bank_name, bank_account_no, bank_ifsc, pan_no, uan_no
+      ) VALUES (?, 'Harini', 'Rao', '+91 98765 43210', 'Adyar, Chennai, Tamil Nadu', ?, 'HR Administrator', '2024-01-12', 0,
+        'Chief Executive Officer', 'Chennai, India', 
+        'I build thoughtful people practices that help teams do their best work. I enjoy creating clear processes, supporting new employees and making every workday feel a little more human.',
+        'Helping people find clarity, grow with confidence and feel supported throughout their journey at the company.',
+        'Community building, reading, long walks and discovering independent coffee shops.',
+        '["Recruitment", "People strategy", "Onboarding", "HR operations", "Employee relations"]',
+        '[{"name": "Strategic Human Resources", "issuer": "SHRM", "year": "2024"}]',
+        '1994-06-18', 'Indian', 'Female', 'harini.rao@gmail.com', 'Married',
+        'HDFC Bank', '123456788421', 'HDFC0001234', 'ABCDE1234F', '100123456788'
+      )
     `, [adminUserId, deptId]);
+
+    await connection.query(
+      'INSERT INTO payroll (employee_id, basic_salary, allowances, deductions, net_salary) VALUES (?, ?, ?, ?, ?)',
+      [adminEmployeeResult.insertId, 35000, 35000, 4400, 65600]
+    );
 
     await connection.commit();
     console.log('Database initialized and Admin user seeded successfully!');

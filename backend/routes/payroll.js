@@ -7,9 +7,10 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 router.get('/me', verifyToken, payrollController.getMe);
 
 // GET /api/payroll (Get all employee payrolls - ADMIN only)
-router.get('/', verifyToken, requireRole('ADMIN'), payrollController.getAll);
+router.get('/', verifyToken, requireRole('hr'), payrollController.getAll);
 
 // PUT /api/payroll/:employeeId (Create or update employee payroll details - ADMIN only)
-router.put('/:employeeId', verifyToken, requireRole('ADMIN'), payrollController.updatePayroll);
+router.put('/:employeeId', verifyToken, requireRole('hr'), payrollController.updatePayroll);
+
 
 module.exports = router;

@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -9,6 +9,9 @@ const employeeRoutes = require('./routes/employees');
 const attendanceRoutes = require('./routes/attendance');
 const leaveRoutes = require('./routes/leaves');
 const payrollRoutes = require('./routes/payroll');
+const departmentRoutes = require('./routes/departments');
+const dashboardRoutes = require('./routes/dashboard');
+const companyRoutes = require('./routes/company');
 
 
 
@@ -56,6 +59,9 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/payroll', payrollRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/company', companyRoutes);
 
 
 
@@ -75,3 +81,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+

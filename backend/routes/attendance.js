@@ -13,6 +13,7 @@ router.post('/check-out', verifyToken, attendanceController.checkOut);
 router.get('/me', verifyToken, attendanceController.getMyAttendance);
 
 // GET /api/attendance/all (ADMIN only)
-router.get('/all', verifyToken, requireRole('ADMIN'), attendanceController.getAllAttendance);
+router.get('/all', verifyToken, requireRole('hr'), attendanceController.getAllAttendance);
+
 
 module.exports = router;
