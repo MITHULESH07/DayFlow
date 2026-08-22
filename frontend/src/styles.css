@@ -195,6 +195,14 @@ form { display: grid; gap: 20px; }
 @media (max-width: 740px) { .year-calendar { grid-template-columns: repeat(2, 1fr); }.calendar-header { grid-template-columns: 1fr auto; }.calendar-legend { grid-column: 1 / -1; } }
 @media (max-width: 460px) { .year-calendar { grid-template-columns: 1fr; } }
 
+/* Profile editing and company branding */
+.profile-title-actions { display: flex; align-items: center; gap: 9px; }
+.upload-button { cursor: pointer; }.upload-button input, .profile-photo input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.profile-photo { cursor: pointer; overflow: visible; }.profile-photo.has-photo { overflow: visible; }.profile-photo > img { width: 100%; height: 100%; overflow: hidden; border-radius: 26px; object-fit: cover; }
+.company-logo-preview { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding-top: 20px; border-top: 1px solid #e0e5df; }.company-logo-preview img { width: 58px; height: 58px; object-fit: contain; border: 1px solid #dfe5dd; border-radius: 12px; background: #fff; }.company-logo-preview > div { display: grid; gap: 3px; }.company-logo-preview span { color: #8a968f; font-size: 8px; font-weight: 800; letter-spacing: .8px; }.company-logo-preview strong { color: #34473b; font-size: 12px; }.company-logo-preview small { color: #929c96; font-size: 9px; }
+.profile-edit-modal { width: min(760px, 100%); }.profile-edit-modal textarea { min-height: 72px; }
+@media (max-width: 650px) { .profile-title-actions { width: 100%; align-items: stretch; flex-direction: column; }.profile-title-actions .outline-button { width: 100%; }.company-logo-preview { align-items: flex-start; } }
+
 @media (max-width: 900px) {
   .auth-shell { grid-template-columns: 1fr; padding: 0; }
   .brand-panel { display: none; }
