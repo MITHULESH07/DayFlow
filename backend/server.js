@@ -7,6 +7,10 @@ const db = require('./config/db'); // Test DB connection on startup
 const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
 const attendanceRoutes = require('./routes/attendance');
+const leaveRoutes = require('./routes/leaves');
+const payrollRoutes = require('./routes/payroll');
+
+
 
 
 const app = express();
@@ -50,6 +54,10 @@ app.get('/api/test-db', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/leaves', leaveRoutes);
+app.use('/api/payroll', payrollRoutes);
+
+
 
 
 

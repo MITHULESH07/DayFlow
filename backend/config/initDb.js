@@ -84,6 +84,40 @@ async function initDb() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
+    // 5.2. Create leave_requests table
+    console.log('Creating leave_requests table...');
+    await connection.query(`
+      CREATE TABLE leave_requests (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        employee_id INT NOT NULL,
+        leave_type ENUM('PAID', 'SICK', 'UNPAID') NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        remarks TEXT NULL,
+        status ENUM('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING',
+        admin_comment TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    // 5.3. Create payroll table
+    console.log('Creating payroll table...');
+    await connection.query(`
+      CREATE TABLE payroll (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        employee_id INT NOT NULL UNIQUE,
+        basic_salary DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        allowances DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        deductions DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        net_salary DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+
+
     // 6. Seed default departments
     console.log('Seeding initial departments...');
     await connection.query(`
