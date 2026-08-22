@@ -1,0 +1,17 @@
+{
+  "name": "dayflow-ai-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "groq-sdk": "^0.16.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
