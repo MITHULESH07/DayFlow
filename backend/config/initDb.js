@@ -69,6 +69,21 @@ async function initDb() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
+    // 5.1. Create attendance table
+    console.log('Creating attendance table...');
+    await connection.query(`
+      CREATE TABLE attendance (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        employee_id INT NOT NULL,
+        attendance_date DATE NOT NULL,
+        check_in TIME NOT NULL,
+        check_out TIME NULL,
+        status ENUM('PRESENT', 'ABSENT', 'HALF_DAY', 'LEAVE') DEFAULT 'PRESENT',
+        UNIQUE (employee_id, attendance_date),
+        FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
     // 6. Seed default departments
     console.log('Seeding initial departments...');
     await connection.query(`

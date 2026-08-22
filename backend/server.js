@@ -6,6 +6,8 @@ const db = require('./config/db'); // Test DB connection on startup
 
 const authRoutes = require('./routes/auth');
 const employeeRoutes = require('./routes/employees');
+const attendanceRoutes = require('./routes/attendance');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -47,6 +49,8 @@ app.get('/api/test-db', async (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/attendance', attendanceRoutes);
+
 
 
 
