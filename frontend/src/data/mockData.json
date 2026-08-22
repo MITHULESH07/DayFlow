@@ -1,0 +1,42 @@
+{
+  "demoUsers": [
+    { "id": "hr-001", "name": "Harini Rao", "identifier": "hr@dayflow.demo", "password": "hr12345", "role": "hr", "companyId": "company-001" },
+    { "id": "emp-001", "name": "Ananya Rao", "identifier": "DFANRA20250014", "password": "employee123", "role": "employee", "companyId": "company-001" }
+  ],
+  "employees": [
+    { "id": 1, "name": "Ananya Rao", "role": "Product Designer", "department": "Design", "initials": "AR", "status": "present", "email": "ananya@dayflow.in", "tone": "peach" },
+    { "id": 2, "name": "Vikram Shah", "role": "Frontend Engineer", "department": "Engineering", "initials": "VS", "status": "present", "email": "vikram@dayflow.in", "tone": "blue" },
+    { "id": 3, "name": "Meera Iyer", "role": "Talent Partner", "department": "People", "initials": "MI", "status": "leave", "email": "meera@dayflow.in", "tone": "lilac" },
+    { "id": 4, "name": "Kabir Nair", "role": "Backend Engineer", "department": "Engineering", "initials": "KN", "status": "absent", "email": "kabir@dayflow.in", "tone": "mint" },
+    { "id": 5, "name": "Riya Sen", "role": "Marketing Lead", "department": "Marketing", "initials": "RS", "status": "present", "email": "riya@dayflow.in", "tone": "rose" },
+    { "id": 6, "name": "Arjun Menon", "role": "Finance Analyst", "department": "Finance", "initials": "AM", "status": "present", "email": "arjun@dayflow.in", "tone": "sand" },
+    { "id": 7, "name": "Nisha Patel", "role": "QA Engineer", "department": "Engineering", "initials": "NP", "status": "leave", "email": "nisha@dayflow.in", "tone": "sky" },
+    { "id": 8, "name": "Dev Kumar", "role": "Sales Executive", "department": "Sales", "initials": "DK", "status": "present", "email": "dev@dayflow.in", "tone": "lime" }
+  ],
+  "attendance": [
+    { "name": "Ananya Rao", "date": "22 Aug 2026", "in": "09:04 AM", "out": "06:12 PM", "hours": "8h 08m", "extra": "08m", "status": "Present" },
+    { "name": "Vikram Shah", "date": "22 Aug 2026", "in": "09:18 AM", "out": "06:31 PM", "hours": "8h 13m", "extra": "13m", "status": "Present" },
+    { "name": "Meera Iyer", "date": "22 Aug 2026", "in": "-", "out": "-", "hours": "-", "extra": "-", "status": "On leave" },
+    { "name": "Kabir Nair", "date": "22 Aug 2026", "in": "-", "out": "-", "hours": "-", "extra": "-", "status": "Absent" },
+    { "name": "Riya Sen", "date": "22 Aug 2026", "in": "08:55 AM", "out": "06:05 PM", "hours": "8h 10m", "extra": "10m", "status": "Present" }
+  ],
+  "salaries": [
+    { "employeeId": 1, "monthlyWage": 72000, "workingDays": 5, "breakHours": 1, "basicPercent": 50, "hraPercentOfBasic": 50, "standardPercent": 8.33, "bonusPercent": 4.17, "ltaPercent": 4.17, "employeePfPercent": 12, "employerPfPercent": 12, "professionalTax": 200 },
+    { "employeeId": 2, "monthlyWage": 85000, "workingDays": 5, "breakHours": 1, "basicPercent": 50, "hraPercentOfBasic": 50, "standardPercent": 8.33, "bonusPercent": 4.17, "ltaPercent": 4.17, "employeePfPercent": 12, "employerPfPercent": 12, "professionalTax": 200 },
+    { "employeeId": 3, "monthlyWage": 68000, "workingDays": 5, "breakHours": 1, "basicPercent": 50, "hraPercentOfBasic": 50, "standardPercent": 8.33, "bonusPercent": 4.17, "ltaPercent": 4.17, "employeePfPercent": 12, "employerPfPercent": 12, "professionalTax": 200 },
+    { "employeeId": 4, "monthlyWage": 90000, "workingDays": 5, "breakHours": 1, "basicPercent": 50, "hraPercentOfBasic": 50, "standardPercent": 8.33, "bonusPercent": 4.17, "ltaPercent": 4.17, "employeePfPercent": 12, "employerPfPercent": 12, "professionalTax": 200 },
+    { "employeeId": 5, "monthlyWage": 78000, "workingDays": 5, "breakHours": 1, "basicPercent": 50, "hraPercentOfBasic": 50, "standardPercent": 8.33, "bonusPercent": 4.17, "ltaPercent": 4.17, "employeePfPercent": 12, "employerPfPercent": 12, "professionalTax": 200 },
+    { "employeeId": 6, "monthlyWage": 74000, "workingDays": 5, "breakHours": 1, "basicPercent": 50, "hraPercentOfBasic": 50, "standardPercent": 8.33, "bonusPercent": 4.17, "ltaPercent": 4.17, "employeePfPercent": 12, "employerPfPercent": 12, "professionalTax": 200 },
+    { "employeeId": 7, "monthlyWage": 70000, "workingDays": 5, "breakHours": 1, "basicPercent": 50, "hraPercentOfBasic": 50, "standardPercent": 8.33, "bonusPercent": 4.17, "ltaPercent": 4.17, "employeePfPercent": 12, "employerPfPercent": 12, "professionalTax": 200 },
+    { "employeeId": 8, "monthlyWage": 65000, "workingDays": 6, "breakHours": 1, "basicPercent": 50, "hraPercentOfBasic": 50, "standardPercent": 8.33, "bonusPercent": 4.17, "ltaPercent": 4.17, "employeePfPercent": 12, "employerPfPercent": 12, "professionalTax": 200 }
+  ],
+  "leaveRequests": [
+    { "id": "LR-1042", "employee": "Meera Iyer", "initials": "MI", "type": "Paid time off", "start": "24 Aug 2026", "end": "26 Aug 2026", "days": 3, "status": "Pending", "reason": "Family function" },
+    { "id": "LR-1041", "employee": "Nisha Patel", "initials": "NP", "type": "Sick leave", "start": "22 Aug 2026", "end": "22 Aug 2026", "days": 1, "status": "Pending", "reason": "Medical appointment" },
+    { "id": "LR-1038", "employee": "Ananya Rao", "initials": "AR", "type": "Paid time off", "start": "12 Aug 2026", "end": "13 Aug 2026", "days": 2, "status": "Approved", "reason": "Personal work" },
+    { "id": "LR-1025", "employee": "Ananya Rao", "initials": "AR", "type": "Sick leave", "start": "16 Mar 2026", "end": "16 Mar 2026", "days": 1, "status": "Approved", "reason": "Fever and recovery" },
+    { "id": "LR-1018", "employee": "Ananya Rao", "initials": "AR", "type": "Paid time off", "start": "8 Jun 2026", "end": "10 Jun 2026", "days": 3, "status": "Approved", "reason": "Family travel" },
+    { "id": "LR-1045", "employee": "Ananya Rao", "initials": "AR", "type": "Paid time off", "start": "14 Sep 2026", "end": "15 Sep 2026", "days": 2, "status": "Pending", "reason": "Personal event" },
+    { "id": "LR-1034", "employee": "Vikram Shah", "initials": "VS", "type": "Unpaid leave", "start": "4 Aug 2026", "end": "4 Aug 2026", "days": 1, "status": "Rejected", "reason": "Personal work" }
+  ]
+}
